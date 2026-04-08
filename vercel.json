@@ -2,6 +2,7 @@
   "version": 2,
   "builds": [
     { "src": "index.html", "use": "@vercel/static" },
-    { "src": "obrigado.html", "use": "@vercel/static" }
+    { "src": "obrigado.html", "use": "@vercel/static" },
+    { "src": "demo.mp4", "use": "@vercel/static" }
   ]
 }
