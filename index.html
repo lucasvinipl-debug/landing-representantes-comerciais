@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Método de Rotas — Venda Mais, Trabalhe Menos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+/* ─── TOKENS ─────────────────────────────── */
+:root {
+  --blue:        #2563EB;
+  --blue-hi:     #3B82F6;
+  --blue-dim:    rgba(37,99,235,0.12);
+  --blue-border: rgba(37,99,235,0.28);
+  --bg:          #09090E;
+  --bg2:         #0D0E15;
+  --surface:     #1A1E2E;
+  --border:      rgba(255,255,255,0.11);
+  --text:        #ECEEF6;
+  --muted:       #7C82A0;
+  --faint:       #3A3F56;
+  --ff-head:     'Montserrat', sans-serif;
+  --ff-body:     'Montserrat', sans-serif;
+  --r:           10px;
+}
+
+/* ─── RESET ──────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ff-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+/* ─── NOISE TEXTURE ──────────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXWBgYGHh4t5eXlzc3OLi4ubm5uVlZWPj4+NjY19fX2JiYl/f39ra2uRkZGZmZlpaWmXl5dvb29xcXGTk5NnZ2c8TV1mAAAAG3RSTlNAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAvEOwtAAAFVklEQVR4XpWWB67c2BUFb3g557T/hRo9/WUMZHlgr4Bg8Z4qQgQJlHI4A8SzFVrapvmTF9O7dmYRFZ60YiBhJRCgh1FYhiLAmdvX0CzTOpNE77ME0Zty/nWWzchDtiqrmQDeuv3powQ5ta2eN0FY0InkqDD73lT9c9lEzwUNqgFHs9VQce3TVClFCQrSTfOiYkVJQBmpbq2L6iZavPnAPcoU0dSw0SUTqz/GtrGuXfbyyBniKykOWQWGqwwMA7QiYAxi+IlPdqo+hYHnUt5ZPfnsHJyNiDtnpJyayNBkF6cWoYGAMY92ZwBG8uP42pwr2jR/qwdkw3TmGqBMs68FxhAvQzN/e0s9uQALDqCe7gAKASAAyAIAoABQABWABAAIAKAAQAFgAIABQABWABAAIAKA") repeat;
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─── GRID BG ────────────────────────────── */
+.grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 75% 60% at 50% 10%, black 30%, transparent 100%);
+  pointer-events: none;
+}
+
+/* ─── KEYFRAMES ──────────────────────────── */
+@keyframes up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0.6); }
+  50%       { box-shadow: 0 0 0 5px rgba(37,99,235,0);  }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1);   }
+}
+
+/* ─── UTILITY ────────────────────────────── */
+.animate-1 { animation: up 0.6s 0.05s both ease; }
+.animate-2 { animation: up 0.6s 0.18s both ease; }
+.animate-3 { animation: up 0.6s 0.30s both ease; }
+.animate-4 { animation: up 0.6s 0.42s both ease; }
+.animate-5 { animation: up 0.6s 0.54s both ease; }
+
+/* ══════════════════════════════════════════
+   SECTION 1 — HERO
+══════════════════════════════════════════ */
+.hero {
+  position: relative;
+  padding: 72px 20px 60px;
+  overflow: hidden;
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ff-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue-hi);
+  background: var(--blue-dim);
+  border: 1px solid var(--blue-border);
+  padding: 5px 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+.badge-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--blue-hi);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+
+/* Headline */
+.hero h1 {
+  font-family: var(--ff-head);
+  font-size: clamp(28px, 7vw, 48px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  margin-bottom: 18px;
+}
+.hero h1 span {
+  color: var(--blue-hi);
+  text-decoration: underline;
+  text-decoration-color: var(--blue);
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+/* Sub */
+.hero-sub {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 36px;
+  max-width: 52ch;
+}
+
+/* ─── FORM CARD ──────────────────────────── */
+.form-card {
+  background: #243058;
+  border: 1px solid rgba(99,130,255,0.4);
+  border-radius: 14px;
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+  max-width: 440px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.form-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 15%; right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+}
+.form-card h2 {
+  font-family: var(--ff-head);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.form-card p.sub {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+
+/* Fields */
+.field { margin-bottom: 12px; }
+.field label { display: none; }
+.field input {
+  width: 100%;
+  background: #18203a;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 8px;
+  padding: 13px 14px;
+  font-family: var(--ff-body);
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  -webkit-appearance: none;
+}
+.field input::placeholder { color: rgba(255,255,255,0.45); }
+.field input:focus {
+  border-color: var(--blue-border);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+/* Button */
+.btn {
+  width: 100%;
+  margin-top: 6px;
+  background: var(--blue);
+  color: #fff;
+  font-family: var(--ff-head);
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 9px;
+  padding: 16px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.12s;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+}
+.btn:hover  { box-shadow: 0 6px 22px rgba(37,99,235,0.5); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); box-shadow: none; }
+.btn .arrow { transition: transform 0.18s; }
+.btn:hover .arrow { transform: translateX(4px); }
+
+.privacy {
+  text-align: center;
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 12px;
+}
+
+/* ─── DESKTOP HERO LAYOUT ────────────────── */
+@media (min-width: 900px) {
+  .hero {
+    padding: 100px 40px 90px;
+    display: flex;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .hero-inner {
+    max-width: 1160px;
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 72px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+  .hero-sub { margin-bottom: 48px; }
+}
+
+/* ══════════════════════════════════════════
+   SECTION 2 — METHOD
+══════════════════════════════════════════ */
+.method {
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 72px 20px 80px;
+  position: relative;
+  overflow: hidden;
+}
+.method-inner {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.section-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue-hi);
+  margin-bottom: 10px;
+}
+.section-title {
+  font-family: var(--ff-head);
+  font-size: clamp(24px, 5vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin-bottom: 52px;
+}
+
+/* ─── STEPS ──────────────────────────────── */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 16px;
+  align-items: start;
+  /* scroll animation state */
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease, transform 0.55s ease,
+              border-color 0.2s, box-shadow 0.2s;
+}
+.step.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.step:nth-child(2).visible { transition-delay: 0.1s; }
+.step:nth-child(3).visible { transition-delay: 0.2s; }
+
+.step:hover {
+  border-color: var(--blue-border);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+/* Step number badge */
+.step-num {
+  width: 48px; height: 48px;
+  background: var(--blue-dim);
+  border: 1px solid var(--blue-border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ff-head);
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--blue-hi);
+  flex-shrink: 0;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.step:hover .step-num {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.4);
+}
+
+.step-body {}
+.step-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue-hi);
+  background: var(--blue-dim);
+  border: 1px solid var(--blue-border);
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+.step-name {
+  font-family: var(--ff-head);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.step-full {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+.step-desc {
+  font-size: 14.5px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ─── DESKTOP METHOD LAYOUT ─────────────── */
+@media (min-width: 900px) {
+  .method { padding: 96px 40px 110px; }
+
+  /* Horizontal steps with connector */
+  .steps {
+    flex-direction: row;
+    gap: 0;
+    position: relative;
+    align-items: start;
+  }
+  /* connector line — pseudo-element so nth-child works correctly */
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: calc(16.6% + 0px);
+    right: calc(16.6% + 0px);
+    height: 1px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .steps::after {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: calc(16.6% + 0px);
+    right: calc(16.6% + 0px);
+    height: 1px;
+    background: linear-gradient(90deg, var(--blue), var(--blue-hi));
+    z-index: 1;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 1s cubic-bezier(0.4,0,0.2,1);
+  }
+  .steps.line-drawn::after { transform: scaleX(1); }
+
+  .step {
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0 24px;
+    position: relative;
+    z-index: 2;
+  }
+  .step:hover {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .step-num {
+    width: 48px; height: 48px;
+  }
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 20px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .step:hover .step-card {
+    border-color: var(--blue-border);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  .step:hover .step-num {
+    background: var(--blue);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.4);
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     HERO
+══════════════════════════════════════════ -->
+<section class="hero">
+  <div class="grid-bg"></div>
+
+  <div class="hero-inner" style="position:relative;z-index:2;">
+
+    <!-- Copy -->
+    <div class="hero-copy">
+      <div class="badge animate-1">
+        <span class="badge-dot"></span>
+        Para representantes comerciais
+      </div>
+
+      <h1 class="animate-2">
+        Venda mais.<br>
+        <span>Trabalhe por menos tempo.</span>
+      </h1>
+
+      <p class="hero-sub animate-3">
+        Descubra o metodo que representantes experientes estao usando para organizar rotas, prospectar clientes e fechar mais sem dobrar a jornada.
+      </p>
+
+      <!-- Mobile: form inline -->
+      <div class="mobile-form animate-4">
+        <div class="form-card">
+          <h2>Quero aprender o metodo</h2>
+          <p class="sub">Preencha os dados e receba o acesso gratuitamente.</p>
+          <form onsubmit="handleSubmit(event)" id="form">
+            <div class="field">
+              <label for="m-name">Nome completo</label>
+              <input type="text" id="m-name" placeholder="Seu nome" autocomplete="name" required>
+            </div>
+            <div class="field">
+              <label for="m-email">E-mail</label>
+              <input type="email" id="m-email" placeholder="seu@email.com" autocomplete="email" required>
+            </div>
+            <div class="field">
+              <label for="m-phone">Telefone</label>
+              <input type="tel" id="m-phone" placeholder="(00) 00000-0000" autocomplete="tel" required>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">
+              Inscrever-se <span class="arrow">&#8594;</span>
+            </button>
+          </form>
+          <p class="privacy">Sem spam. Seus dados ficam seguros.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop only: form on right column -->
+    <div class="desktop-form animate-5">
+      <div class="form-card">
+        <h2>Quero aprender o metodo</h2>
+        <p class="sub">Preencha os dados e receba o acesso gratuitamente.</p>
+        <form onsubmit="handleSubmit(event)" id="form-d">
+          <div class="field">
+            <label for="d-name">Nome completo</label>
+            <input type="text" id="d-name" placeholder="Seu nome" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label for="d-email">E-mail</label>
+            <input type="email" id="d-email" placeholder="seu@email.com" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="d-phone">Telefone</label>
+            <input type="tel" id="d-phone" placeholder="(00) 00000-0000" autocomplete="tel" required>
+          </div>
+          <button type="submit" class="btn" id="submitBtnD">
+            Inscrever-se <span class="arrow">&#8594;</span>
+          </button>
+        </form>
+        <p class="privacy">Sem spam. Seus dados ficam seguros.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════
+     SCROLL STORY
+══════════════════════════════════════════ -->
+<section class="story-section" id="storySection">
+  <div class="story-sticky">
+
+    <!-- LEFT: text panels -->
+    <div class="story-text">
+      <div class="story-panel" id="panel0">
+        <span class="story-tag">01 — Prospeccao</span>
+        <h2 class="story-heading"><em>Prospeccao</em></h2>
+        <p class="story-pill-inline">Tecnologia de Descoberta de Clientes</p>
+        <p class="story-body">Encontra clientes potenciais por regiao e segmento. Voce ve onde estao as oportunidades que ainda nao esta visitando.</p>
+      </div>
+
+      <div class="story-panel" id="panel1">
+        <span class="story-tag">02 — Roteiro</span>
+        <h2 class="story-heading"><em>Roteiro</em></h2>
+        <p class="story-pill-inline">Sistema de Roteirizacao Inteligente</p>
+        <p class="story-body">Voce seleciona os melhores pontos e o sistema monta a rota perfeita: distancia, horarios e prioridade de cada cliente.</p>
+      </div>
+
+      <div class="story-panel" id="panel2">
+        <span class="story-tag">03 — Fidelizacao</span>
+        <h2 class="story-heading"><em>Fidelizacao</em></h2>
+        <p class="story-pill-inline">Metodo de Cadencia e Reativacao</p>
+        <p class="story-body">Mantem o cliente ativo com cadencia certa e reativa quem parou de comprar antes que ele va para o concorrente.</p>
+      </div>
+    </div>
+
+    <!-- RIGHT: video scrubber -->
+    <div class="story-video-wrap">
+      <div class="story-video-frame">
+        <video
+          id="scrubVideo"
+          src="demo.mp4"
+          muted
+          playsinline
+          preload="auto"
+        ></video>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+<style>
+/* ─── SCROLL STORY ───────────────────────── */
+.story-section {
+  position: relative;
+  height: 320vh;
+  background: var(--bg);
+}
+
+.story-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 40px;
+  gap: 60px;
+}
+
+/* Text panels */
+.story-text {
+  position: relative;
+  height: 300px;
+}
+
+.story-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+
+.story-panel.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.story-panel.exit {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.story-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--blue-hi);
+  margin-bottom: 20px;
+  display: block;
+}
+
+.story-heading {
+  font-family: var(--ff-head);
+  font-size: clamp(28px, 3.2vw, 44px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+.story-heading em {
+  font-style: normal;
+  color: var(--blue-hi);
+}
+
+.story-body {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 42ch;
+  margin-bottom: 24px;
+}
+
+.story-pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+/* Video */
+.story-video-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.story-video-frame {
+  width: 100%;
+  max-width: 380px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  position: relative;
+  background: #000;
+}
+
+.story-video-frame video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.story-pill-inline {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 16px;
+}
+
+/* Mobile */
+@media (max-width: 899px) {
+  .story-sticky {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    padding: 60px 20px 40px;
+    gap: 32px;
+    align-content: center;
+  }
+  .story-text { height: 260px; }
+  .story-video-wrap { justify-content: center; }
+  .story-video-frame { max-width: 100%; }
+  .story-heading { font-size: clamp(24px, 6vw, 36px); }
+}
+
+/* Show/hide forms based on breakpoint */
+.mobile-form  { display: block; }
+.desktop-form { display: none;  }
+
+@media (min-width: 900px) {
+  .mobile-form  { display: none;  }
+  .desktop-form { display: block; }
+}
+</style>
+
+<script>
+/* ─── PHONE MASK ────────────────────────── */
+function applyMask(el) {
+  if (!el) return;
+  el.addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 6)      v = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+    else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+    else if (v.length > 0) v = '(' + v;
+    this.value = v;
+  });
+}
+applyMask(document.getElementById('m-phone'));
+applyMask(document.getElementById('d-phone'));
+
+/* ─── FORM SUBMIT ───────────────────────── */
+
+// ⚠️ Cole aqui a URL do seu Google Apps Script Web App
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbz7LTeGzrHcs_MRPWJTBdX7c3Bi-68wBDyX5rFhasIej5rXh0bZHqKLEKrircataTAh/exec';
+
+function getFormData(formId) {
+  const isMobile = formId === 'form';
+  const prefix   = isMobile ? 'm' : 'd';
+  return {
+    nome:     document.getElementById(prefix + '-name').value.trim(),
+    email:    document.getElementById(prefix + '-email').value.trim(),
+    telefone: document.getElementById(prefix + '-phone').value.trim(),
+  };
+}
+
+function setButtons(state) {
+  const states = {
+    loading: { text: 'Enviando...', css: 'opacity:0.7;cursor:wait;pointer-events:none;' },
+    success: { text: 'Inscrição confirmada ✓', css: 'background:#15803d;cursor:default;pointer-events:none;' },
+    error:   { text: 'Erro — tente novamente', css: 'background:#b91c1c;cursor:default;' },
+  };
+  const s = states[state];
+  ['submitBtn','submitBtnD'].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.innerHTML = s.text;
+    b.style.cssText = s.css;
+  });
+}
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  const formId = e.target.id;
+  const data   = getFormData(formId);
+
+  // Validate URL configured
+  if (!SHEET_URL || SHEET_URL === 'COLE_SUA_URL_AQUI') {
+    alert('Configure a URL do Google Apps Script na variável SHEET_URL.');
+    return;
+  }
+
+  setButtons('loading');
+
+  try {
+    await fetch(SHEET_URL, {
+      method: 'POST',
+      mode:   'no-cors',          // Apps Script não retorna CORS — usa no-cors
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, origem: window.location.href }),
+    });
+    setButtons('success');
+  } catch (err) {
+    console.error(err);
+    setButtons('error');
+    setTimeout(() => {
+      ['submitBtn','submitBtnD'].forEach(id => {
+        const b = document.getElementById(id);
+        if (!b) return;
+        b.innerHTML = 'Inscrever-se <span class="arrow">&#8594;</span>';
+        b.style.cssText = '';
+      });
+    }, 3000);
+  }
+}
+
+/* ─── SCROLL STORY ENGINE ───────────────── */
+const video   = document.getElementById('scrubVideo');
+const section = document.getElementById('storySection');
+const panels  = ['panel0','panel1','panel2'].map(id => document.getElementById(id));
+const N       = 3;
+let cur            = 0;
+let targetProgress = 0;
+let loopActive     = false;
+let stopTimer      = null;
+
+panels[0].classList.add('active');
+
+function rafLoop() {
+  if (!loopActive) return;
+
+  // Scrub video every frame
+  if (video.readyState >= 1) {
+    video.currentTime = targetProgress * video.duration;
+  }
+
+  // Switch panel
+  const idx = Math.min(Math.floor(targetProgress * N), N - 1);
+  if (idx !== cur) {
+    panels[cur].classList.remove('active');
+    panels[cur].classList.add('exit');
+    const old = cur;
+    setTimeout(() => panels[old].classList.remove('exit'), 520);
+    cur = idx;
+    panels[cur].classList.add('active');
+  }
+
+  requestAnimationFrame(rafLoop);
+}
+
+function onScroll() {
+  const rect = section.getBoundingClientRect();
+  const total = section.offsetHeight - window.innerHeight;
+  targetProgress = Math.min(Math.max(-rect.top / total, 0), 1);
+
+  // Start loop if not running
+  if (!loopActive) {
+    loopActive = true;
+    requestAnimationFrame(rafLoop);
+  }
+
+  // Stop loop 250ms after last scroll event
+  clearTimeout(stopTimer);
+  stopTimer = setTimeout(() => { loopActive = false; }, 250);
+}
+
+document.addEventListener('scroll', onScroll, { passive: true });
+window.addEventListener('scroll', onScroll, { passive: true });
+
+</script>
+
+</body>
+</html>
