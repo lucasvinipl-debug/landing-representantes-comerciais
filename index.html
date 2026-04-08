@@ -811,6 +811,7 @@ async function handleSubmit(e) {
       body: JSON.stringify({ ...data, origem: window.location.href }),
     });
     setButtons('success');
+    setTimeout(() => { window.location.href = 'obrigado.html'; }, 800);
   } catch (err) {
     console.error(err);
     setButtons('error');
