@@ -823,18 +823,32 @@ function getFormData(formId) {
   };
 }
 
-function animateProgress(fillId, pctId, from, to, duration) {
+/* ── Progress: assintótica contínua ── */
+let _progressVal  = 0;
+let _progressRaf  = null;
+let _progressFill = null;
+let _progressPct  = null;
+
+function _tickProgress() {
+  // Approaches 90 asymptotically — never stalls, never reaches without signal
+  _progressVal += (90 - _progressVal) * 0.018;
+  const v = Math.min(Math.round(_progressVal), 89);
+  if (_progressFill) _progressFill.style.width = v + '%';
+  if (_progressPct)  _progressPct.textContent  = v + '%';
+  _progressRaf = requestAnimationFrame(_tickProgress);
+}
+
+function _finishProgress() {
+  cancelAnimationFrame(_progressRaf);
+  _progressRaf = null;
   return new Promise(resolve => {
-    const fill = document.getElementById(fillId);
-    const pct  = document.getElementById(pctId);
-    if (!fill || !pct) { resolve(); return; }
     const start = performance.now();
+    const from  = _progressVal;
     function step(now) {
-      const t = Math.min((now - start) / duration, 1);
-      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-      const val = Math.round(from + (to - from) * ease);
-      fill.style.width = val + '%';
-      pct.textContent  = val + '%';
+      const t   = Math.min((now - start) / 400, 1);
+      const val = Math.round(from + (100 - from) * (t < 0.5 ? 2*t*t : -1+(4-2*t)*t));
+      if (_progressFill) _progressFill.style.width = val + '%';
+      if (_progressPct)  _progressPct.textContent  = val + '%';
       if (t < 1) requestAnimationFrame(step);
       else resolve();
     }
@@ -842,27 +856,34 @@ function animateProgress(fillId, pctId, from, to, duration) {
   });
 }
 
-function startProgressBtns() {
+function startProgressBtns(fillId, pctId) {
   ['submitBtn','submitBtnD'].forEach(id => {
     const b = document.getElementById(id);
     if (b) b.classList.add('is-loading');
   });
+  _progressVal  = 0;
+  _progressFill = document.getElementById(fillId);
+  _progressPct  = document.getElementById(pctId);
+  _tickProgress();
 }
 
 function resetButtons() {
+  cancelAnimationFrame(_progressRaf);
+  _progressRaf = null;
+  _progressVal = 0;
   ['submitBtn','submitBtnD'].forEach(id => {
     const b = document.getElementById(id);
     if (!b) return;
     b.classList.remove('is-loading');
     b.style.cssText = '';
-    ['fillM','fillD'].forEach(fid => {
-      const f = document.getElementById(fid);
-      if (f) f.style.width = '0%';
-    });
-    ['pctM','pctD'].forEach(pid => {
-      const p = document.getElementById(pid);
-      if (p) p.textContent = '0%';
-    });
+  });
+  ['fillM','fillD'].forEach(fid => {
+    const f = document.getElementById(fid);
+    if (f) { f.style.width = '0%'; f.style.background = ''; }
+  });
+  ['pctM','pctD'].forEach(pid => {
+    const p = document.getElementById(pid);
+    if (p) p.textContent = '0%';
   });
 }
 
@@ -876,14 +897,10 @@ async function handleSubmit(e) {
     return;
   }
 
-  // Start progress UI
-  startProgressBtns();
-
-  // Animate 0→70% while fetch runs
   const fillId = formId === 'form' ? 'fillM' : 'fillD';
   const pctId  = formId === 'form' ? 'pctM'  : 'pctD';
 
-  animateProgress(fillId, pctId, 0, 70, 900);
+  startProgressBtns(fillId, pctId);
 
   try {
     await fetch(SHEET_URL, {
@@ -893,22 +910,14 @@ async function handleSubmit(e) {
       body: JSON.stringify({ ...data, origem: window.location.href }),
     });
 
-    // Animate 70→100% then redirect
-    await animateProgress(fillId, pctId, 70, 100, 500);
-    setTimeout(() => { window.location.href = 'obrigado.html'; }, 200);
+    // Fetch done → complete to 100% then redirect
+    await _finishProgress();
+    window.location.href = 'obrigado.html';
 
   } catch (err) {
     console.error(err);
-    // On error: fill red and reset
-    ['submitBtn','submitBtnD'].forEach(id => {
-      const b = document.getElementById(id);
-      if (b) {
-        const f = b.querySelector('.btn-progress-fill');
-        const p = b.querySelector('.btn-progress-pct');
-        if (f) f.style.background = '#ef4444';
-        if (p) p.textContent = 'Erro';
-      }
-    });
+    if (_progressFill) _progressFill.style.background = '#ef4444';
+    if (_progressPct)  _progressPct.textContent = 'Erro';
     setTimeout(resetButtons, 2500);
   }
 }
