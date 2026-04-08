@@ -241,6 +241,46 @@ body::after {
   margin-top: 12px;
 }
 
+/* ─── BUTTON PROGRESS STATE ─────────────── */
+.btn.is-loading {
+  cursor: default;
+  pointer-events: none;
+  padding: 0;
+  overflow: hidden;
+  height: 52px;
+}
+.btn.is-loading .btn-label { display: none; }
+.btn-progress-wrap {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  padding: 0 18px;
+  gap: 12px;
+}
+.btn.is-loading .btn-progress-wrap { display: flex; }
+.btn-progress-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.btn-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #fff;
+  border-radius: 99px;
+  transition: width 0.12s linear;
+}
+.btn-progress-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  min-width: 36px;
+  text-align: right;
+}
+
 /* ─── DESKTOP HERO LAYOUT ────────────────── */
 @media (min-width: 900px) {
   .hero {
@@ -506,7 +546,11 @@ body::after {
               <input type="tel" id="m-phone" placeholder="(00) 00000-0000" autocomplete="tel" required>
             </div>
             <button type="submit" class="btn" id="submitBtn">
-              Inscrever-se <span class="arrow">&#8594;</span>
+              <span class="btn-label">Inscrever-se <span class="arrow">&#8594;</span></span>
+              <div class="btn-progress-wrap">
+                <div class="btn-progress-track"><div class="btn-progress-fill" id="fillM"></div></div>
+                <span class="btn-progress-pct" id="pctM">0%</span>
+              </div>
             </button>
           </form>
           <p class="privacy">Sem spam. Seus dados ficam seguros.</p>
@@ -533,7 +577,11 @@ body::after {
             <input type="tel" id="d-phone" placeholder="(00) 00000-0000" autocomplete="tel" required>
           </div>
           <button type="submit" class="btn" id="submitBtnD">
-            Inscrever-se <span class="arrow">&#8594;</span>
+            <span class="btn-label">Inscrever-se <span class="arrow">&#8594;</span></span>
+            <div class="btn-progress-wrap">
+              <div class="btn-progress-track"><div class="btn-progress-fill" id="fillD"></div></div>
+              <span class="btn-progress-pct" id="pctD">0%</span>
+            </div>
           </button>
         </form>
         <p class="privacy">Sem spam. Seus dados ficam seguros.</p>
@@ -775,18 +823,46 @@ function getFormData(formId) {
   };
 }
 
-function setButtons(state) {
-  const states = {
-    loading: { text: 'Enviando...', css: 'opacity:0.7;cursor:wait;pointer-events:none;' },
-    success: { text: 'Inscrição confirmada ✓', css: 'background:#15803d;cursor:default;pointer-events:none;' },
-    error:   { text: 'Erro — tente novamente', css: 'background:#b91c1c;cursor:default;' },
-  };
-  const s = states[state];
+function animateProgress(fillId, pctId, from, to, duration) {
+  return new Promise(resolve => {
+    const fill = document.getElementById(fillId);
+    const pct  = document.getElementById(pctId);
+    if (!fill || !pct) { resolve(); return; }
+    const start = performance.now();
+    function step(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+      const val = Math.round(from + (to - from) * ease);
+      fill.style.width = val + '%';
+      pct.textContent  = val + '%';
+      if (t < 1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function startProgressBtns() {
+  ['submitBtn','submitBtnD'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.classList.add('is-loading');
+  });
+}
+
+function resetButtons() {
   ['submitBtn','submitBtnD'].forEach(id => {
     const b = document.getElementById(id);
     if (!b) return;
-    b.innerHTML = s.text;
-    b.style.cssText = s.css;
+    b.classList.remove('is-loading');
+    b.style.cssText = '';
+    ['fillM','fillD'].forEach(fid => {
+      const f = document.getElementById(fid);
+      if (f) f.style.width = '0%';
+    });
+    ['pctM','pctD'].forEach(pid => {
+      const p = document.getElementById(pid);
+      if (p) p.textContent = '0%';
+    });
   });
 }
 
@@ -795,34 +871,45 @@ async function handleSubmit(e) {
   const formId = e.target.id;
   const data   = getFormData(formId);
 
-  // Validate URL configured
   if (!SHEET_URL || SHEET_URL === 'COLE_SUA_URL_AQUI') {
     alert('Configure a URL do Google Apps Script na variável SHEET_URL.');
     return;
   }
 
-  setButtons('loading');
+  // Start progress UI
+  startProgressBtns();
+
+  // Animate 0→70% while fetch runs
+  const fillId = formId === 'form' ? 'fillM' : 'fillD';
+  const pctId  = formId === 'form' ? 'pctM'  : 'pctD';
+
+  animateProgress(fillId, pctId, 0, 70, 900);
 
   try {
     await fetch(SHEET_URL, {
       method: 'POST',
-      mode:   'no-cors',          // Apps Script não retorna CORS — usa no-cors
+      mode:   'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...data, origem: window.location.href }),
     });
-    setButtons('success');
-    setTimeout(() => { window.location.href = 'obrigado.html'; }, 800);
+
+    // Animate 70→100% then redirect
+    await animateProgress(fillId, pctId, 70, 100, 500);
+    setTimeout(() => { window.location.href = 'obrigado.html'; }, 200);
+
   } catch (err) {
     console.error(err);
-    setButtons('error');
-    setTimeout(() => {
-      ['submitBtn','submitBtnD'].forEach(id => {
-        const b = document.getElementById(id);
-        if (!b) return;
-        b.innerHTML = 'Inscrever-se <span class="arrow">&#8594;</span>';
-        b.style.cssText = '';
-      });
-    }, 3000);
+    // On error: fill red and reset
+    ['submitBtn','submitBtnD'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) {
+        const f = b.querySelector('.btn-progress-fill');
+        const p = b.querySelector('.btn-progress-pct');
+        if (f) f.style.background = '#ef4444';
+        if (p) p.textContent = 'Erro';
+      }
+    });
+    setTimeout(resetButtons, 2500);
   }
 }
 
