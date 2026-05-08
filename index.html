@@ -935,20 +935,34 @@ async function handleSubmit(e) {
 
   startProgressBtns(fillId, pctId);
 
+  // Payload final
+  const payload = {
+    ...data,
+    origem: window.location.href,
+    estado: _geo.estado,
+    cidade: _geo.cidade,
+    regiao_completa: _geo.regiao_completa,
+    ip: _geo.ip,
+  };
+
   try {
-    await fetch(SHEET_URL, {
-      method: 'POST',
-      mode:   'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...data,
-        origem: window.location.href,
-        estado: _geo.estado,
-        cidade: _geo.cidade,
-        regiao_completa: _geo.regiao_completa,
-        ip: _geo.ip,
-      }),
-    });
+    // 1) Google Apps Script — escreve na planilha
+    // 2) Webhook do Rotadash — cadastra direto no ManyChat (independente do AS)
+    // Em paralelo: se um falhar, o outro continua. Se ambos fizerem, é OK
+    // (operações idempotentes do nosso lado).
+    await Promise.all([
+      fetch(SHEET_URL, {
+        method: 'POST',
+        mode:   'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {}),
+      fetch('https://app.rotarep.com/api/leads/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {}),
+    ]);
 
     // Fetch done → complete to 100% then redirect
     await _finishProgress();
