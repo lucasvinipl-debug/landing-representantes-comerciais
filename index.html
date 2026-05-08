@@ -813,6 +813,25 @@ applyMask(document.getElementById('d-phone'));
 // ⚠️ Cole aqui a URL do seu Google Apps Script Web App
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbz7LTeGzrHcs_MRPWJTBdX7c3Bi-68wBDyX5rFhasIej5rXh0bZHqKLEKrircataTAh/exec';
 
+/* ─── GEO IP — captura estado do visitante via ipapi.co ───
+ * Roda em background no load. Não bloqueia o submit.
+ * Se a API falhar (limite ou bloqueio), envia vazio.
+ */
+let _geo = { estado: '', cidade: '', regiao_completa: '', ip: '' };
+(async () => {
+  try {
+    const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json();
+    _geo = {
+      estado: j.region_code || '',                 // ex: "SP"
+      cidade: j.city || '',                        // ex: "São Paulo"
+      regiao_completa: j.region || '',             // ex: "São Paulo"
+      ip: j.ip || '',
+    };
+  } catch (e) { /* ignora — fica vazio */ }
+})();
+
 function getFormData(formId) {
   const isMobile = formId === 'form';
   const prefix   = isMobile ? 'm' : 'd';
@@ -907,7 +926,14 @@ async function handleSubmit(e) {
       method: 'POST',
       mode:   'no-cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, origem: window.location.href }),
+      body: JSON.stringify({
+        ...data,
+        origem: window.location.href,
+        estado: _geo.estado,
+        cidade: _geo.cidade,
+        regiao_completa: _geo.regiao_completa,
+        ip: _geo.ip,
+      }),
     });
 
     // Fetch done → complete to 100% then redirect
