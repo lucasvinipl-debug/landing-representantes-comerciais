@@ -794,7 +794,7 @@ body::after {
 </style>
 
 <script>
-/* ─── PHONE MASK ────────────────────────── */
+/* ─── PHONE MASK + VALIDATION ───────────── */
 function applyMask(el) {
   if (!el) return;
   el.addEventListener('input', function () {
@@ -807,6 +807,25 @@ function applyMask(el) {
 }
 applyMask(document.getElementById('m-phone'));
 applyMask(document.getElementById('d-phone'));
+
+// Lista de DDDs válidos no Brasil
+const BR_DDDS = new Set([
+  "11","12","13","14","15","16","17","18","19","21","22","24","27","28",
+  "31","32","33","34","35","37","38","41","42","43","44","45","46","47","48","49",
+  "51","53","54","55","61","62","63","64","65","66","67","68","69",
+  "71","73","74","75","77","79","81","82","83","84","85","86","87","88","89",
+  "91","92","93","94","95","96","97","98","99"
+]);
+
+// Valida telefone brasileiro: (DDD) 9XXXX-XXXX (mobile com 9-prefix obrigatório).
+// Retorna { ok, error }.
+function validateBRPhone(masked) {
+  const d = (masked || "").replace(/\D/g, "");
+  if (d.length !== 11) return { ok: false, error: "Telefone deve ter 11 dígitos: DDD + 9 + 8 dígitos" };
+  if (!BR_DDDS.has(d.slice(0,2))) return { ok: false, error: "DDD inválido (use 11, 21, 31, etc.)" };
+  if (d[2] !== "9") return { ok: false, error: "Celular deve começar com 9 após o DDD" };
+  return { ok: true };
+}
 
 /* ─── FORM SUBMIT ───────────────────────── */
 
@@ -923,6 +942,19 @@ async function handleSubmit(e) {
 
   const formId = e.target.id;
   const data   = getFormData(formId);
+
+  // Valida telefone — rejeita inputs corrompidos (com (55) na frente etc.)
+  const phoneCheck = validateBRPhone(data.telefone);
+  if (!phoneCheck.ok) {
+    alert(phoneCheck.error + "\n\nExemplo correto: (11) 99999-8888");
+    // Re-habilita botões pra deixar o user corrigir
+    _submitting = false;
+    ['submitBtn','submitBtnD'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = false;
+    });
+    return;
+  }
 
   if (!SHEET_URL || SHEET_URL === 'COLE_SUA_URL_AQUI') {
     alert('Configure a URL do Google Apps Script na variável SHEET_URL.');
