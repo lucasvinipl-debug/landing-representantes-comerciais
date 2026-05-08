@@ -906,13 +906,27 @@ function resetButtons() {
   });
 }
 
+// Anti-duplicate global. true se um submit já está em curso (qualquer
+// formulário). Bloqueia cliques múltiplos / re-submit após back/refresh.
+let _submitting = false;
+
 async function handleSubmit(e) {
   e.preventDefault();
+  if (_submitting) return;  // bloqueia submit duplicado
+  _submitting = true;
+
+  // Desabilita ambos os botões fisicamente — protege contra Enter no campo
+  ['submitBtn','submitBtnD'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = true;
+  });
+
   const formId = e.target.id;
   const data   = getFormData(formId);
 
   if (!SHEET_URL || SHEET_URL === 'COLE_SUA_URL_AQUI') {
     alert('Configure a URL do Google Apps Script na variável SHEET_URL.');
+    _submitting = false;
     return;
   }
 
