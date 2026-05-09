@@ -856,6 +856,22 @@ const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwPVvMoIhA8K8ujgbiEct
  * Se a API falhar (limite ou bloqueio), envia vazio.
  */
 let _geo = { estado: '', cidade: '', regiao_completa: '', ip: '' };
+
+// Captura fbclid da URL e armazena como _fbc cookie pra CAPI attribution
+(function captureFbclid() {
+  try {
+    const u = new URL(window.location.href);
+    const fbclid = u.searchParams.get('fbclid');
+    if (fbclid) {
+      const fbc = `fb.1.${Date.now()}.${fbclid}`;
+      document.cookie = `_fbc=${fbc}; path=/; max-age=7776000; SameSite=Lax`;
+    }
+  } catch (_) {}
+})();
+
+function getCookie(name) {
+  return document.cookie.split('; ').find(c => c.startsWith(name + '='))?.split('=')[1] || '';
+}
 (async () => {
   try {
     const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
@@ -1001,6 +1017,11 @@ async function handleSubmit(e) {
     // 2) Webhook do Rotadash — cadastra direto no ManyChat (independente do AS)
     // Em paralelo: se um falhar, o outro continua. Se ambos fizerem, é OK
     // (operações idempotentes do nosso lado).
+    // event_id partilhado entre Pixel client-side e CAPI server-side pra deduplicar
+    const eventId = 'lead_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+    const fbc = getCookie('_fbc');
+    const fbp = getCookie('_fbp');
+
     await Promise.all([
       fetch(SHEET_URL, {
         method: 'POST',
@@ -1013,10 +1034,25 @@ async function handleSubmit(e) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }).catch(() => {}),
+      // Conversions API (server-side) — atribuição precisa por anúncio via fbc/fbp
+      fetch('https://app.rotarep.com/api/meta/capi-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: payload.email,
+          phone: payload.telefone,
+          nome:  payload.nome,
+          ip:    _geo.ip,
+          ua:    navigator.userAgent,
+          fbc, fbp,
+          event_id: eventId,
+          event_source_url: window.location.href,
+        }),
+      }).catch(() => {}),
     ]);
 
-    // Fetch done → track Lead + complete to 100% then redirect
-    if (typeof fbq === 'function') fbq('track', 'Lead');
+    // Fetch done → track Lead client-side + complete to 100% then redirect
+    if (typeof fbq === 'function') fbq('track', 'Lead', {}, { eventID: eventId });
     await _finishProgress();
     window.location.href = 'obrigado.html';
 
