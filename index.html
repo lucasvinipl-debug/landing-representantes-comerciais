@@ -1094,6 +1094,9 @@ async function handleSubmit(e) {
   startProgressBtns(fillId, pctId);
 
   // Payload final
+  // Inclui UTMs capturadas no carregamento (via _rrTrack) e visitor_id
+  // pra cruzar lead → anúncio → venda no painel.
+  const _utms = (window._rrTrack && window._rrTrack.utms) || {};
   const payload = {
     ...data,
     origem: window.location.href,
@@ -1101,6 +1104,14 @@ async function handleSubmit(e) {
     cidade: _geo.cidade,
     regiao_completa: _geo.regiao_completa,
     ip: _geo.ip,
+    utm_source: _utms.utm_source || '',
+    utm_medium: _utms.utm_medium || '',
+    utm_campaign: _utms.utm_campaign || '',
+    utm_content: _utms.utm_content || '',
+    utm_term: _utms.utm_term || '',
+    utm_id: _utms.utm_id || '',
+    fbclid: new URLSearchParams(location.search).get('fbclid') || '',
+    visitor_id: (window._rrTrack && window._rrTrack.visitorId) || '',
   };
 
   try {
