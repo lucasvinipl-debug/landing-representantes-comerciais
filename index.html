@@ -1070,7 +1070,7 @@ async function handleSubmit(e) {
         country: 'br',
         external_id: (payload.email || phoneE164),
       });
-      fbq('track', 'Lead', {}, { eventID: eventId });
+      fbq('track', 'Lead', { value: 15, currency: 'BRL' }, { eventID: eventId });
     }
     await _finishProgress();
     window.location.href = 'obrigado.html';
