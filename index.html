@@ -1035,15 +1035,18 @@ async function handleSubmit(e) {
         body: JSON.stringify(payload),
       }).catch(() => {}),
       // Conversions API (server-side) — atribuição precisa por anúncio via fbc/fbp
+      // Inclui Advanced Matching com cidade/estado pra subir Event Match Quality
       fetch('https://app.rotarep.com/api/meta/capi-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: payload.email,
-          phone: payload.telefone,
-          nome:  payload.nome,
-          ip:    _geo.ip,
-          ua:    navigator.userAgent,
+          email:  payload.email,
+          phone:  payload.telefone,
+          nome:   payload.nome,
+          cidade: payload.cidade,
+          estado: payload.estado,
+          ip:     _geo.ip,
+          ua:     navigator.userAgent,
           fbc, fbp,
           event_id: eventId,
           event_source_url: window.location.href,
@@ -1051,8 +1054,24 @@ async function handleSubmit(e) {
       }).catch(() => {}),
     ]);
 
-    // Fetch done → track Lead client-side + complete to 100% then redirect
-    if (typeof fbq === 'function') fbq('track', 'Lead', {}, { eventID: eventId });
+    // Pixel client-side com Advanced Matching — re-init enviando dados do user
+    // hashados pelo browser (Meta dedupa com CAPI via eventID).
+    if (typeof fbq === 'function') {
+      const phoneDigits = String(payload.telefone || '').replace(/\D/g, '');
+      const phoneE164   = phoneDigits.startsWith('55') ? phoneDigits : ('55' + phoneDigits);
+      const nameParts   = String(payload.nome || '').trim().split(/\s+/);
+      fbq('init', '975350481523683', {
+        em: (payload.email || '').toLowerCase(),
+        ph: phoneE164,
+        fn: (nameParts[0] || '').toLowerCase(),
+        ln: (nameParts.slice(1).join(' ') || '').toLowerCase(),
+        ct: (payload.cidade || '').toLowerCase().replace(/\s+/g, ''),
+        st: (payload.estado || '').toLowerCase(),
+        country: 'br',
+        external_id: (payload.email || phoneE164),
+      });
+      fbq('track', 'Lead', {}, { eventID: eventId });
+    }
     await _finishProgress();
     window.location.href = 'obrigado.html';
 
